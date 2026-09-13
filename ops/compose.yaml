@@ -8,7 +8,7 @@ services:
     env_file: /etc/uptimekit/reticle.env
     image: caddy:2.10.2-alpine
     mem_limit: 160m
-    ports: ['80:80', '443:443', '443:443/udp']
+    ports: ['80:80', '443:443', '443:443/udp', '127.0.0.1:8443:8443', '127.0.0.1:8444:8444']
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-uptimekit.masoftware.net}
     volumes:

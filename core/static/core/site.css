@@ -1,0 +1,79 @@
+/* Matches the deployed Reticle dark palette, including its neutral surface overrides. */
+:root {
+  color-scheme: dark;
+  --bg-0: #111111;
+  --bg-1: #1a1a1a;
+  --bg-2: #222222;
+  --bg-3: #2a2a2a;
+  --stroke-1: #2a2a2a;
+  --stroke-2: #333333;
+  --stroke-strong: #444444;
+  --text-1: #e6e9f0;
+  --text-2: #aab2c5;
+  --accent: #5b8cff;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+  --ok: #2ec27e;
+  --warn: #f5c144;
+  --err: #e5484d;
+  --radius: 10px;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace;
+  font: 14px/1.5 var(--font-sans);
+  color: var(--text-1);
+  background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+header, main, footer { width: min(100%, 1150px); margin: 0 auto; padding: 24px; }
+header { display: flex; align-items: center; gap: 32px; min-height: 72px; border-bottom: 1px solid var(--stroke-1); }
+.brand { flex-shrink: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.brand span { color: var(--accent); }
+nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+nav a, nav button { display: inline-block; color: var(--text-2); border: 1px solid transparent; padding: 6px 10px; border-radius: 6px; text-decoration: none; }
+nav a:hover, nav button:hover { background: var(--bg-2); color: var(--text-1); text-decoration: none; }
+main { min-height: calc(100vh - 152px); padding-top: 38px; padding-bottom: 38px; }
+footer { color: var(--text-2); border-top: 1px solid var(--stroke-1); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+h1, h2 { color: var(--text-1); line-height: 1.25; font-weight: 600; letter-spacing: -0.025em; }
+h1 { margin: 12px 0 16px; font-size: clamp(26px, 4vw, 34px); }
+h2 { margin: 0 0 16px; font-size: 20px; }
+p { margin: 12px 0; overflow-wrap: anywhere; }
+small, .muted { color: var(--text-2); }
+small { font-size: 12px; }
+code { font: 13px var(--font-mono); color: var(--text-2); background: var(--bg-2); border-radius: 4px; padding: 3px 6px; overflow-wrap: anywhere; }
+.card { background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius); padding: 24px; margin: 20px 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); overflow-x: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 20px; margin: 24px 0; }
+.grid .card { margin: 0; }
+table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--stroke-1); }
+th { color: var(--text-2); font-size: 12px; font-weight: 500; }
+input, select, textarea, button { font: inherit; color: var(--text-1); border: 1px solid var(--stroke-2); border-radius: 6px; }
+input, select, textarea { background: var(--bg-2); padding: 9px 12px; max-width: 100%; }
+input:not([type="checkbox"]):not([type="radio"]), select { width: min(100%, 420px); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+label { display: block; color: var(--text-2); margin: 0 0 6px; }
+button { background: var(--bg-2); padding: 8px 14px; cursor: pointer; transition: background 90ms ease, border-color 90ms ease; }
+button:hover { background: var(--bg-3); border-color: var(--stroke-strong); }
+button:disabled { opacity: 0.45; cursor: default; }
+form.inline { display: inline; margin: 0; }
+form.inline button { background: transparent; }
+.ok { color: var(--ok); }
+.bad, .errorlist { color: var(--err); }
+.errorlist { padding-left: 20px; }
+iframe { display: block; width: 100%; height: 680px; margin: 20px 0; background: var(--bg-0); border: 1px solid var(--stroke-1); border-radius: var(--radius); }
+::selection { background: var(--accent-soft); color: var(--text-1); }
+
+@media (max-width: 640px) {
+  header, main, footer { padding-left: 16px; padding-right: 16px; }
+  header { align-items: flex-start; flex-direction: column; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
+  nav { gap: 2px; margin-left: -10px; }
+  main { padding-top: 24px; }
+  .card { padding: 18px; }
+  iframe { height: 580px; }
+}

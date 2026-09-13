@@ -57,6 +57,7 @@ export DJANGO_DEBUG=true POSTGRES_PASSWORD=uptimekit
 # Separate terminals, with the same environment:
 .venv/bin/celery -A config worker -l INFO --concurrency=1
 .venv/bin/celery -A config beat -l INFO
+.venv/bin/python manage.py collectstatic --noinput
 .venv/bin/python manage.py test tests
 ```
 

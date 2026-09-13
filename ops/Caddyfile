@@ -30,3 +30,14 @@
         }
     }
 }
+
+# Private HTTPS entry points reached only through SSH local forwarding.
+https://localhost:8443 {
+    tls internal
+    reverse_proxy dev-web:8000
+}
+
+https://localhost:8444 {
+    tls internal
+    reverse_proxy prod-web:8000
+}
