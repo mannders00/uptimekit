@@ -67,7 +67,7 @@ def operations(request):
         response = httpx.get('http://alertmanager:9093/api/v2/alerts', timeout=2, trust_env=False)
         response.raise_for_status()
         # Only curated fields; no internal hostnames, arbitrary labels or tenant data.
-        alerts = [{'name': a['labels'].get('alertname', 'Infrastructure alert'), 'severity': a['labels'].get('severity', 'warning'), 'since': a['startsAt']} for a in response.json()]
+        alerts = [{'name': a['labels'].get('alertname', 'Infrastructure alert'), 'environment': a['labels'].get('environment', 'host'), 'severity': a['labels'].get('severity', 'warning'), 'since': a['startsAt']} for a in response.json()]
         available = True
     except (httpx.HTTPError, ValueError):
         pass

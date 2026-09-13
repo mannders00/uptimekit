@@ -20,12 +20,17 @@ case "$ACTION" in
     [[ "$ENVIRONMENT" == dev ]] || { echo 'Failure drills run in dev' >&2; exit 2; }
     exec 9>"$STATE/operation.lock"; flock -w 900 9
     SERVICE=${ACTION%-drill}
+    case "$SERVICE" in
+      worker) EXPECTED=MonitoringCanaryStale ;;
+      redis) EXPECTED=BrokerUnavailable ;;
+      db) EXPECTED=DatabaseUnavailable ;;
+    esac
     trap 'compose start "$SERVICE"; compose run --rm --no-deps web python manage.py runtime_check' EXIT
     echo "Drill start: $ACTION $(date -u +%FT%TZ)"
     compose stop "$SERVICE"
     sleep 240
     # Preserve actual evaluated alert names as workflow evidence.
-    curl --fail --silent http://localhost:9093/api/v2/alerts | python3 -c 'import json,sys; print(json.dumps([{ "name":a["labels"].get("alertname"), "environment":a["labels"].get("environment"), "since":a["startsAt"]} for a in json.load(sys.stdin)]))'
+    curl --fail --silent http://localhost:9093/api/v2/alerts | python3 -c 'import json,sys; alerts=[{"name":a["labels"].get("alertname"), "environment":a["labels"].get("environment"), "since":a["startsAt"]} for a in json.load(sys.stdin)]; print(json.dumps(alerts)); assert any(a["name"] == sys.argv[1] and a["environment"] == "dev" for a in alerts), "Expected dev alert did not fire"' "$EXPECTED"
     echo "Drill end: $ACTION $(date -u +%FT%TZ)"
     ;;
   restart)
