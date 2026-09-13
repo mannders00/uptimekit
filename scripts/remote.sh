@@ -13,7 +13,7 @@ trap 'rm -rf "$TEMP"' EXIT
 printf '%s\n' "$SSH_KEY" > "$TEMP/key"
 printf '%s\n' "$SSH_KNOWN_HOSTS" > "$TEMP/known_hosts"
 chmod 600 "$TEMP/key" "$TEMP/known_hosts"
-SSH=(ssh -i "$TEMP/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$TEMP/known_hosts")
+SSH=(ssh -i "$TEMP/key" -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$TEMP/known_hosts")
 TARGET="$SSH_USER@$SSH_HOST"
 REVISION=$(git rev-parse HEAD)
 [[ "$REVISION" =~ ^[a-f0-9]{40}$ ]]

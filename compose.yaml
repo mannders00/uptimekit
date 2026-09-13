@@ -75,6 +75,9 @@ services:
     image: ubuntu/squid@sha256:eecf35336788c1ab143566bca99ac58f213e9f17906a9a684346d7b323b6696c
     restart: unless-stopped
     mem_limit: 128m
+    ulimits:
+      nofile: {soft: 1024, hard: 1024}
+    tmpfs: [/tmp]
     volumes: [./ops/squid.conf:/etc/squid/squid.conf:ro]
     networks: [data, egress]
     logging: {driver: json-file, options: {max-size: 10m, max-file: '3'}}
