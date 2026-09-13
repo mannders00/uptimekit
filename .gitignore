@@ -14,3 +14,4 @@ evidence/private/
 *.pdf
 .DS_Store
 dist/
+.playwright-mcp/

@@ -15,7 +15,7 @@ rollback_on_error() {
   echo 'Release failed; restoring previous application artifact (schema is not reversed).'
   if [[ -n "$OLD" ]]; then
     export APP_IMAGE="$OLD"
-    compose up -d --no-deps web worker beat
+    compose up -d --no-deps --wait --wait-timeout 120 web worker beat
     compose run --rm --no-deps web python manage.py runtime_check
   fi
   exit 1
@@ -29,7 +29,7 @@ if [[ -n "$OLD" ]]; then
 fi
 compose run --rm --no-deps web python manage.py check --deploy --fail-level WARNING
 compose run --rm --no-deps web python manage.py migrate --noinput
-compose up -d --no-deps web worker beat
+compose up -d --no-deps --wait --wait-timeout 120 web worker beat
 compose run --rm --no-deps web python manage.py seed_canary
 compose run --rm --no-deps web python manage.py check_egress
 compose run --rm --no-deps web python manage.py runtime_check
