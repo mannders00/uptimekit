@@ -22,7 +22,7 @@ fi
 START=$(date +%s)
 NAME="uptimekit-restore-$ENVIRONMENT-$$"
 PASSWORD=$(openssl rand -hex 24)
-cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; docker network rm "$NAME" >/dev/null 2>&1 || true; [[ -z "$DOWNLOAD" ]] || rm -rf "$DOWNLOAD"; }
+cleanup() { docker rm -fv "$NAME" >/dev/null 2>&1 || true; docker network rm "$NAME" >/dev/null 2>&1 || true; [[ -z "$DOWNLOAD" ]] || rm -rf "$DOWNLOAD"; }
 trap cleanup EXIT
 docker network create --internal "$NAME" >/dev/null
 docker run -d --name "$NAME" --network "$NAME" --network-alias db --memory 320m \
