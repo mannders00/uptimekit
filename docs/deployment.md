@@ -2,8 +2,8 @@
 
 ## Host and network
 
-Reference host: Debian 13 ARM64, EC2 t4g.medium, 4 GiB RAM, 40 GB encrypted EBS
-(verify encryption in AWS), Elastic IP configured by the operator. Allow TCP
+Reference host: Debian 13 ARM64, EC2 t4g.medium, 4 GiB RAM, 40 GB EBS
+(encryption must be verified in AWS), Elastic IP configured by the operator. Allow TCP
 22 for trusted operators/runners, TCP 80/443 for HTTP/TLS, optionally UDP 443.
 Do not expose database, Redis, Grafana, Prometheus, Alertmanager or Reticle ports.
 EC2 IMDS should require v2; do not grant broad instance-role credentials.
@@ -24,8 +24,7 @@ GitHub environment secrets are the deployment control-plane boundary.
 
 ## GitHub environments and secrets
 
-Create `dev` and `prod`. Both need these secrets (repository-level fallback is
-also supported):
+Create `dev` and `prod`. Both need these environment-scoped secrets:
 
 | Name | Value |
 |---|---|
@@ -79,12 +78,29 @@ The backup identity needs PutObject; the recovery identity also needs GetObject.
 
 ```sh
 ssh -i /path/to/key -L 3000:127.0.0.1:3000 -L 9090:127.0.0.1:9090 \
-  -L 9093:127.0.0.1:9093 -L 8001:127.0.0.1:8001 admin@HOST
+  -L 9093:127.0.0.1:9093 -L 8443:127.0.0.1:8443 \
+  -L 8444:127.0.0.1:8444 admin@HOST
 ```
 
 Grafana: `http://localhost:3000`, user `admin`, password in
-`/etc/uptimekit/grafana-password`. Dev readiness is available on
-`http://localhost:8001/health/ready`; full UI uses production security settings
-and requires an HTTPS forwarding endpoint to use secure cookies in a browser.
+`/etc/uptimekit/grafana-password`. Dev UI is `https://localhost:8443/`;
+production admin is `https://localhost:8444/admin/`. These listeners use Caddy's
+private CA. Export **only its public root certificate**, transfer it to your
+workstation, and trust it for browser/CLI access:
+
+```sh
+# On EC2:
+docker cp uptimekit-ops-caddy-1:/data/caddy/pki/authorities/local/root.crt ./uptimekit-local-ca.crt
+# On your workstation after SCP:
+curl --cacert ./uptimekit-local-ca.crt https://localhost:8443/health/ready
+```
+
+Use that CA in your browser's trust store for the private HTTPS origins. Public
+HTTPS uses Let's Encrypt and Cloudflare's normally trusted certificates. Dev/prod
+have different session/CSRF cookie names so their localhost ports do not collide.
+Create a staff operator securely from SSH with
+`docker exec -it uptimekit-prod-web-1 python manage.py createsuperuser`.
+Public `/admin/` remains blocked by Caddy.
+
 Dev has separate networks, database, media and secrets; host resources and the
 operator account are shared. A second EC2 is needed for failure-domain isolation.

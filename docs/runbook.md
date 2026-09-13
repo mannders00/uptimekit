@@ -34,6 +34,8 @@ days. An unset S3 bucket is logged as local-only and raises OffHostBackupMissing
 `restore-drill` runs weekly and manually; it performs a new backup and restores it
 into a clean isolated PostgreSQL container with no workers or external task execution.
 It records duration and row counts, then removes the disposable environment.
+When S3 is configured, the drill downloads the just-uploaded backup and checksum
+before restoring; its JSON evidence identifies `backup_source` as `s3` or `local`.
 
 For real host loss:
 

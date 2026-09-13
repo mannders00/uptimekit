@@ -4,6 +4,13 @@ The local Go/Wails refactor at `~/doc/dev/pro/reticle` supplies the daemon binar
 Its private source and commercial binary are not published in this public repo.
 Build an ARM64 Linux daemon using its documented build command, record version,
 source revision/worktree status and binary SHA-256, and upload via SCP.
+Use `sudo bash scripts/install-reticle.sh /path/to/uploaded/reticle-daemon`
+from an uploaded release bundle to install the supplied topology/service.
+
+The current local build includes a WebSocket bearer-authentication fix in
+`internal/daemon/websocket.go` and a dedicated regression test in
+`internal/daemon/websocket_bearer_test.go`. HTTP and WebSocket now both honor the
+proxy's viewer authorization header ahead of caller query tokens.
 
 Install to `/usr/local/bin/reticle-daemon`. Create a system user `reticle`, install
 `ops/reticle/topology.yaml` at `/etc/reticle/uptimekit.yaml`, and install the supplied

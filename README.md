@@ -16,12 +16,12 @@ flowchart LR
   Dev -->|verified digest promotion| Prod[Production Compose]
   Browser --> CF[Cloudflare TLS] --> Caddy --> Web[Django / Uvicorn]
   Web --> DB[(PostgreSQL)]
-  Stripe -->|signed events| Web
+  Stripe[Stripe: awaiting configuration] -->|signed events when enabled| Web
   Beat[Celery Beat] --> Redis[(Redis)] --> Worker[Celery worker]
   Worker --> DB
   Worker --> Proxy[Squid public-destination ACL] --> Internet
-  Worker --> Storage[S3 reports / optional SMTP]
-  DB --> Backup[pg_dump / off-host S3]
+  Worker --> Storage[Local reports / optional S3 and SMTP]
+  DB --> Backup[Local pg_dump / optional off-host S3]
   Prometheus --> Web
   Prometheus --> Exporters[Host + TLS probes]
   Prometheus --> Alertmanager
@@ -37,6 +37,7 @@ flowchart LR
 | Test, build and deploy dev | PostgreSQL tests, deployment checks, immutable ARM64 image, real runtime smoke |
 | Promote verified image to production | Same digest, pre-release backup, migrations, web/worker/Beat update, fresh canary |
 | Operate and recover | Status, smoke, rollback, restart, backup, disposable restore, controlled dev failure drills |
+| Bad release rollback drill | CI-built failure image must be rejected and automatically rolled back in dev |
 | Independent public health check | Best-effort external HTTPS probe from GitHub, outside EC2's failure domain |
 
 The workflow YAML is thin glue. `scripts/remote.sh` uses ordinary SSH and a git
