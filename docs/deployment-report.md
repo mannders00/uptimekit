@@ -18,6 +18,22 @@ rule are optional; the off-host alert is no longer loaded by default. Existing
 backup/restore-freshness alerts remain enabled. The UptimeKit brand links to the
 Monitors dashboard.
 
+The free-mode update passed **20 PostgreSQL-backed tests**, including the retained
+paid-mode checks and new coverage for free creation/dispatch/execution, reports
+without billing records, and disabled Stripe calls even when keys are present:
+[CI](https://github.com/mannders00/uptimekit/actions/runs/34776429716),
+[production promotion](https://github.com/mannders00/uptimekit/actions/runs/34776635144).
+In the live browser, a newly registered user logged out and back in, created a
+monitor without subscribing, and received a real scheduled HTTP 200 check (88 ms).
+Clicking the UptimeKit brand returned to Monitors. The synthetic monitor, account
+and workspace were removed after verification.
+
+Prometheus verification confirmed the off-host alert was not loaded, while local
+backup freshness and restore-drill alerts remained enabled; Alertmanager reported
+no active alerts after the update.
+
+![Verified free monitoring after login](evidence/free-monitoring.png)
+
 The release identifiers, measurements and screenshots below record the original
 infrastructure exercises; screenshots showing the off-host warning predate this
 policy change. The health endpoint always reports the currently running release.
