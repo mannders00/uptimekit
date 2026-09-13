@@ -33,7 +33,7 @@ compose up -d --no-deps --wait --wait-timeout 120 web worker beat
 compose run --rm --no-deps web python manage.py seed_canary
 compose run --rm --no-deps web python manage.py check_egress
 compose run --rm --no-deps web python manage.py runtime_check
-[[ -z "$OLD" ]] || printf '%s\n' "$OLD" > "$STATE/previous.image"
+[[ -z "$OLD" || "$OLD" == "$IMAGE" ]] || printf '%s\n' "$OLD" > "$STATE/previous.image"
 printf '%s\n' "$IMAGE" > "$STATE/current.image"
 printf '%s\n' "$IMAGE" > "$STATE/verified.image"
 printf '{"environment":"%s","image":"%s","verified_at":"%s"}\n' "$ENVIRONMENT" "$IMAGE" "$(date -u +%FT%TZ)" | tee "$STATE/release.json"

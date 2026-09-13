@@ -18,6 +18,8 @@ case "$ACTION" in
     compose run --rm --no-deps web python manage.py runtime_check
     printf '%s\n' "$OLD" > "$STATE/previous.image"
     printf '%s\n' "$IMAGE" > "$STATE/current.image"
+    printf '%s\n' "$IMAGE" > "$STATE/verified.image"
+    printf '{"environment":"%s","image":"%s","operation":"rollback","verified_at":"%s"}\n' "$ENVIRONMENT" "$IMAGE" "$(date -u +%FT%TZ)" | tee "$STATE/release.json"
     ;;
   worker-drill|redis-drill|db-drill)
     [[ "$ENVIRONMENT" == dev ]] || { echo 'Failure drills run in dev' >&2; exit 2; }
