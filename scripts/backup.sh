@@ -12,6 +12,7 @@ mv "$FILE.partial" "$FILE"
 sha256sum "$FILE" > "$FILE.sha256"
 compose exec -T db pg_restore --list < "$FILE" >/dev/null
 printf 'uptimekit_backup_timestamp_seconds{environment="%s"} %s\n' "$ENVIRONMENT" "$(date +%s)" > "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom.tmp"
+chmod 644 "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom.tmp"
 mv "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom.tmp" "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom"
 set -a
 source /etc/uptimekit/backup.env
@@ -20,6 +21,7 @@ if [[ -n "${BACKUP_BUCKET:-}" ]]; then
   aws s3 cp "$FILE" "s3://$BACKUP_BUCKET/$ENVIRONMENT/$STAMP.dump" --sse AES256 --only-show-errors
   aws s3 cp "$FILE.sha256" "s3://$BACKUP_BUCKET/$ENVIRONMENT/$STAMP.dump.sha256" --sse AES256 --only-show-errors
   printf 'uptimekit_offhost_backup_timestamp_seconds{environment="%s"} %s\n' "$ENVIRONMENT" "$(date +%s)" > "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom.tmp"
+  chmod 644 "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom.tmp"
   mv "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom.tmp" "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom"
 else
   echo 'Off-host backup NOT configured; local backup only.' >&2

@@ -31,6 +31,7 @@ compose run --rm --no-deps web python manage.py check --deploy --fail-level WARN
 compose run --rm --no-deps web python manage.py migrate --noinput
 compose up -d --no-deps web worker beat
 compose run --rm --no-deps web python manage.py seed_canary
+compose run --rm --no-deps web python manage.py check_egress
 compose run --rm --no-deps web python manage.py runtime_check
 [[ -z "$OLD" ]] || printf '%s\n' "$OLD" > "$STATE/previous.image"
 printf '%s\n' "$IMAGE" > "$STATE/current.image"

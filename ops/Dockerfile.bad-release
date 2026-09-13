@@ -1,0 +1,4 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+# Deliberately broken web command. Built only by the explicit dev failure drill.
+CMD ["python", "-c", "raise SystemExit('Intentional bad-release drill')"]

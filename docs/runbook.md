@@ -54,6 +54,11 @@ measured per drill, never inferred from the schedule.
 
 ## Failure drills
 
+**Bad release rollback drill** builds an intentionally broken web command in CI
+from a provided known image, deploys it only to dev, requires deployment failure
+and the rollback log, then verifies the recovered runtime. No images are built
+ad hoc on the production host. The broken artifact is never marked verified.
+
 `worker-drill`, `redis-drill`, and `db-drill` are restricted to dev. Each stops one
 component for four minutes, captures evaluated alert names, and uses a shell exit
 trap to restart the service and require a fresh runtime canary. Operator intervention

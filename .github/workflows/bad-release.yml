@@ -1,0 +1,48 @@
+name: Bad release rollback drill
+on:
+  workflow_dispatch:
+    inputs:
+      base_image:
+        description: Currently verified dev image digest
+        type: string
+        required: true
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: bad-release-drill
+  cancel-in-progress: false
+jobs:
+  drill:
+    runs-on: ubuntu-24.04-arm
+    environment: dev
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build intentional failure artifact in CI
+        env:
+          BASE_IMAGE: ${{ inputs.base_image }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$BASE_IMAGE" =~ ^ghcr.io/mannders00/uptimekit@sha256:[a-f0-9]{64}$ ]]
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -f ops/Dockerfile.bad-release --build-arg BASE_IMAGE="$BASE_IMAGE" -t "ghcr.io/mannders00/uptimekit:drill-$GITHUB_RUN_ID" .
+          docker push "ghcr.io/mannders00/uptimekit:drill-$GITHUB_RUN_ID"
+          echo "BAD_IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/mannders00/uptimekit:drill-$GITHUB_RUN_ID")" >> "$GITHUB_ENV"
+      - name: Require deploy failure, automatic rollback and healthy runtime
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          START=$(date +%s)
+          set +e
+          bash scripts/remote.sh dev deploy "$BAD_IMAGE" 2>&1 | tee drill.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          test "$STATUS" -ne 0
+          grep -q 'Release failed; restoring previous application artifact' drill.log
+          grep -q '"runtime_check": "passed"' drill.log
+          bash scripts/remote.sh dev smoke
+          echo "Failed release detected and recovery verified in $(( $(date +%s) - START )) seconds." >> "$GITHUB_STEP_SUMMARY"

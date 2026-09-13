@@ -17,6 +17,11 @@ Caddy strips `/reticle/` for relative frontend assets and routes `/ws`,
 token. These paths are intentionally public read-only evidence. Reticle's current
 frontend uses root-relative websocket paths, hence those explicit routes.
 The infrastructure page embeds `/reticle/` on the same origin.
+The inspected daemon's static CSP hash differed from its embedded import map.
+Caddy supplies the measured SHA-256 hash for that one inline import map and routes
+its root-relative `/vendor/*` imports. This compatibility shim must be rechecked
+on daemon upgrades; it does not enable arbitrary inline script. Cloudflare's
+injected analytics script remains blocked by that policy.
 
 Collectors use fixed HTTP probes against readiness and Prometheus, not arbitrary
 shell commands. `jq` predicates require a nonempty result and enforce freshness
