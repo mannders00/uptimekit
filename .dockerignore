@@ -1,0 +1,11 @@
+.git
+venv
+.venv
+.env*
+*.pdf
+__pycache__
+*.pyc
+media
+staticfiles
+evidence
+dist

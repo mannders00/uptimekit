@@ -1,0 +1,70 @@
+groups:
+  - name: uptimekit
+    rules:
+      - alert: ApplicationUnavailable
+        expr: up{job="django"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: 'Application metrics unreachable', runbook_url: 'https://github.com/mannders00/uptimekit/blob/main/docs/runbook.md#site-unavailable'}
+      - alert: DatabaseUnavailable
+        expr: uptimekit_database_up == 0
+        for: 30s
+        labels: {severity: critical}
+      - alert: BrokerUnavailable
+        expr: uptimekit_redis_up == 0
+        for: 30s
+        labels: {severity: critical}
+      - alert: SchedulerStale
+        expr: uptimekit_dispatcher_age_seconds > 90
+        for: 30s
+        labels: {severity: critical}
+      - alert: MonitoringCanaryStale
+        expr: uptimekit_canary_age_seconds > 180
+        for: 30s
+        labels: {severity: critical}
+      - alert: ChecksBacklogged
+        expr: uptimekit_oldest_pending_seconds > 120
+        for: 1m
+        labels: {severity: warning}
+      - alert: NotificationDeliveryFailed
+        expr: uptimekit_notification_failed > 0
+        for: 2m
+        labels: {severity: warning}
+      - alert: BillingProjectionStale
+        expr: uptimekit_billing_stale > 0
+        for: 5m
+        labels: {severity: warning}
+      - alert: StripeWebhookFailures
+        expr: sum by (environment) (increase(uptimekit_webhook_failures_total[5m])) > 0
+        labels: {severity: warning}
+      - alert: HTTPServerErrors
+        expr: sum by (environment) (rate(uptimekit_http_requests_total{status=~"5.."}[5m])) > 0.02
+        for: 2m
+        labels: {severity: warning}
+      - alert: PublicHTTPSUnavailable
+        expr: probe_success{job="public-https"} == 0
+        for: 1m
+        labels: {severity: critical}
+      - alert: TLSCertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 14
+        labels: {severity: warning}
+      - alert: DiskSpaceLow
+        expr: node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"} < 0.15
+        for: 5m
+        labels: {severity: critical}
+      - alert: MemoryPressure
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 5m
+        labels: {severity: warning}
+      - alert: BackupStale
+        expr: time() - uptimekit_backup_timestamp_seconds > 90000 or absent(uptimekit_backup_timestamp_seconds)
+        for: 5m
+        labels: {severity: critical}
+      - alert: OffHostBackupMissing
+        expr: time() - uptimekit_offhost_backup_timestamp_seconds > 90000 or absent(uptimekit_offhost_backup_timestamp_seconds)
+        for: 5m
+        labels: {severity: warning}
+      - alert: RestoreDrillOverdue
+        expr: time() - uptimekit_restore_timestamp_seconds > 604800 or absent(uptimekit_restore_timestamp_seconds)
+        for: 5m
+        labels: {severity: warning}

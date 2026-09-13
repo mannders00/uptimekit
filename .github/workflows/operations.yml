@@ -1,0 +1,35 @@
+name: Operate and recover
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, prod]
+        default: dev
+      action:
+        type: choice
+        options: [status, smoke, backup, restore-drill, rollback, worker-drill, redis-drill, db-drill, restart, observability]
+        default: status
+  schedule:
+    - cron: '17 3 * * *'
+    - cron: '47 4 * * 0'
+permissions: {contents: read}
+concurrency:
+  group: operations-${{ inputs.environment || 'prod' }}
+  cancel-in-progress: false
+jobs:
+  operate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'prod' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute portable operator script
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          TARGET_ENV: ${{ inputs.environment || 'prod' }}
+          ACTION: ${{ inputs.action || (github.event.schedule == '47 4 * * 0' && 'restore-drill' || 'backup') }}
+        run: bash scripts/remote.sh "$TARGET_ENV" "$ACTION"

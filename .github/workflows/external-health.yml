@@ -1,0 +1,13 @@
+name: Independent public health check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl --fail --max-time 20 --retry 2 https://uptimekit.masoftware.net/health/ready
+# GitHub marks failures and can notify repository watchers independently of EC2.
+# Schedules are best effort, not a 15-minute detection guarantee.

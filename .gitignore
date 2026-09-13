@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.pem
+*.sqlite3
+staticfiles/
+media/
+evidence/private/
+*.dump
+*.pdf
+.DS_Store
+dist/

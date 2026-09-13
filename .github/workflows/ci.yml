@@ -1,0 +1,80 @@
+name: Test, build and deploy dev
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    services:
+      postgres:
+        image: postgres:17.9-bookworm
+        env:
+          POSTGRES_DB: uptimekit
+          POSTGRES_USER: uptimekit
+          POSTGRES_PASSWORD: ci-only
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U uptimekit" --health-interval 5s --health-retries 10
+    env:
+      POSTGRES_PASSWORD: ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - run: pip install -r requirements.lock
+      - run: python manage.py test tests --verbosity 2
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py check
+      - run: python manage.py check --deploy --fail-level WARNING
+        env:
+          DJANGO_ENV: production
+          DJANGO_SECRET_KEY: ci-fixture-only-0123456789abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ
+      - name: Shell and configuration validation
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python -m compileall -q accounts billing config core monitors reports
+          python -m json.tool ops/grafana/dashboards/overview.json > /dev/null
+          docker run --rm --entrypoint promtool -v "$PWD/ops:/rules:ro" prom/prometheus:v3.5.1 check rules /rules/alerts.yml
+  build:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build once and publish SHA artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build --build-arg RELEASE_SHA="$GITHUB_SHA" -t "ghcr.io/mannders00/uptimekit:$GITHUB_SHA" .
+          docker push "ghcr.io/mannders00/uptimekit:$GITHUB_SHA"
+      - id: image
+        run: |
+          IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/mannders00/uptimekit:$GITHUB_SHA")
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "Promote this digest after dev verification: \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+  dev:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH release with authenticated and background runtime checks
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          APP_IMAGE: ${{ needs.build.outputs.image }}
+        run: bash scripts/remote.sh dev deploy "$APP_IMAGE"

@@ -1,0 +1,23 @@
+[Unit]
+Description=Reticle read-only infrastructure evidence
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+User=reticle
+Group=reticle
+EnvironmentFile=/etc/uptimekit/reticle.env
+ExecStart=/usr/local/bin/reticle-daemon --bind 172.17.0.1 --port 8788 --config /etc/reticle/uptimekit.yaml
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+MemoryMax=192M
+
+[Install]
+WantedBy=multi-user.target

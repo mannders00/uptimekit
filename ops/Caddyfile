@@ -1,0 +1,29 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+    }
+    @private path /internal/* /admin/*
+    respond @private 404
+    redir /reticle /reticle/
+    handle_path /reticle/* {
+        reverse_proxy host.docker.internal:8788 {
+            header_up Authorization "Bearer {$RETICLE_VIEW_TOKEN}"
+        }
+    }
+    # Reticle's Go/Wails frontend uses root-relative websocket/API routes.
+    @reticle path /ws /api/graph /api/history /mcp
+    handle @reticle {
+        reverse_proxy host.docker.internal:8788 {
+            header_up Authorization "Bearer {$RETICLE_VIEW_TOKEN}"
+        }
+    }
+    handle {
+        reverse_proxy prod-web:8000 {
+            health_uri /health/ready
+            health_interval 10s
+        }
+    }
+}

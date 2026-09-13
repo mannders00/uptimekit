@@ -1,0 +1,172 @@
+version: 1
+nodes:
+  customer:
+    kind: server
+    title: Customer / Cloudflare
+    subtitle: HTTPS edge
+    x: 40
+    y: 60
+    w: 230
+    h: 120
+    notes: Public TLS entry. Cloudflare must use Full (strict) to the Caddy origin.
+  caddy:
+    kind: server
+    title: Caddy
+    subtitle: TLS and reverse proxy
+    x: 340
+    y: 60
+    w: 230
+    h: 120
+  web:
+    kind: server
+    title: Django / Uvicorn
+    subtitle: Production control plane
+    x: 640
+    y: 60
+    w: 230
+    h: 120
+    notes: Auth, tenant-scoped UI, signed Stripe webhooks. scripts/operate.sh prod smoke
+  postgres:
+    kind: database
+    title: PostgreSQL 17
+    subtitle: Durable tenant and incident state
+    x: 940
+    y: 60
+    w: 230
+    h: 120
+    notes: Private volume. Daily backups and disposable restores. scripts/restore-drill.sh prod
+  beat:
+    kind: server
+    title: Celery Beat
+    subtitle: Singleton scheduler
+    x: 340
+    y: 280
+    w: 230
+    h: 120
+    notes: Emits dispatcher every 15 seconds. Fresh dispatcher execution is the health signal.
+  redis:
+    kind: database
+    title: Redis
+    subtitle: Ephemeral task broker
+    x: 640
+    y: 280
+    w: 230
+    h: 120
+    notes: PostgreSQL outbox republishes lost or stale jobs. Redis is not backed up.
+  worker:
+    kind: server
+    title: Celery worker
+    subtitle: Checks, reports, notification outbox
+    x: 940
+    y: 280
+    w: 230
+    h: 120
+    notes: Bounded HTTP requests through destination-filtering proxy. Canary measures successful end-to-end work.
+  monitoring:
+    kind: server
+    title: Prometheus / Grafana
+    subtitle: Metrics, dashboards and alert evaluation
+    x: 40
+    y: 500
+    w: 280
+    h: 120
+    notes: Private Grafana via SSH tunnel. Active alerts are exposed on the curated infrastructure page.
+  backups:
+    kind: database
+    title: Backup / Restore
+    subtitle: Measured recovery evidence
+    x: 390
+    y: 500
+    w: 260
+    h: 120
+    notes: Local daily dumps; off-host S3 requires bucket configuration. Local files alone do not cover host loss.
+  dev:
+    kind: server
+    title: Isolated dev environment
+    subtitle: Same host, separate state
+    x: 720
+    y: 500
+    w: 260
+    h: 120
+    notes: CI deploys here first. Worker/Redis/DB failure drills are restricted to dev.
+edges:
+  edge-entry: {kind: tcp, label: HTTPS, from: customer, to: caddy}
+  edge-web: {kind: tcp, label: HTTP private, from: caddy, to: web}
+  edge-db: {kind: tcp, label: SQL, from: web, to: postgres}
+  edge-schedule: {kind: tcp, label: periodic tasks, from: beat, to: redis}
+  edge-work: {kind: tcp, label: task delivery, from: redis, to: worker}
+  edge-results: {kind: tcp, label: results / outbox, from: worker, to: postgres}
+  edge-metrics: {kind: tcp, label: scrape, from: monitoring, to: web}
+  edge-backup: {kind: tcp, label: pg_dump / restore, from: postgres, to: backups}
+  edge-promote: {kind: tcp, label: verified image promotion, from: dev, to: web}
+collectors:
+  - id: public-health
+    nodeId: customer
+    name: Public TLS readiness
+    kind: http
+    url: https://uptimekit.masoftware.net/health/ready
+    status: 2xx
+    timeoutSeconds: 8
+  - id: prod-ready
+    nodeId: web
+    name: Origin database readiness
+    kind: http
+    url: http://127.0.0.1:8002/health/ready
+    status: 2xx
+    timeoutSeconds: 5
+  - id: db-ready
+    nodeId: postgres
+    name: PostgreSQL query through readiness
+    kind: http
+    url: http://127.0.0.1:8002/health/ready
+    status: 2xx
+    timeoutSeconds: 5
+  - id: dispatcher-fresh
+    nodeId: beat
+    name: Dispatcher freshness below 90 seconds
+    kind: http
+    url: http://127.0.0.1:9090/api/v1/query?query=uptimekit_dispatcher_age_seconds%7Benvironment%3D%22prod%22%7D
+    status: 2xx
+    jq: '.data.result | length > 0 and (.[0].value[1] | tonumber) < 90'
+    timeoutSeconds: 5
+  - id: redis-ready
+    nodeId: redis
+    name: Broker connectivity
+    kind: http
+    url: http://127.0.0.1:9090/api/v1/query?query=uptimekit_redis_up%7Benvironment%3D%22prod%22%7D
+    status: 2xx
+    jq: '.data.result | length > 0 and (.[0].value[1] | tonumber) == 1'
+    timeoutSeconds: 5
+  - id: canary-fresh
+    nodeId: worker
+    name: Successful monitoring loop below 180 seconds
+    kind: http
+    url: http://127.0.0.1:9090/api/v1/query?query=uptimekit_canary_age_seconds%7Benvironment%3D%22prod%22%7D
+    status: 2xx
+    jq: '.data.result | length > 0 and (.[0].value[1] | tonumber) < 180'
+    timeoutSeconds: 5
+  - id: prometheus-ready
+    nodeId: monitoring
+    name: Prometheus readiness
+    kind: http
+    url: http://127.0.0.1:9090/-/ready
+    status: 2xx
+    timeoutSeconds: 5
+  - id: restore-fresh
+    nodeId: backups
+    name: Verified restore within seven days
+    kind: http
+    url: http://127.0.0.1:9090/api/v1/query?query=time%28%29-uptimekit_restore_timestamp_seconds%7Benvironment%3D%22prod%22%7D
+    status: 2xx
+    jq: '.data.result | length > 0 and (.[0].value[1] | tonumber) < 604800'
+    timeoutSeconds: 5
+  - id: dev-ready
+    nodeId: dev
+    name: Development readiness
+    kind: http
+    url: http://127.0.0.1:8001/health/ready
+    status: 2xx
+    timeoutSeconds: 5
+actions: []
+groups: []
+layers: []
