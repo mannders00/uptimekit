@@ -11,6 +11,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from billing.models import BillingAccount
+from billing.access import monitoring_access_q
 from monitors.models import CheckJob, CheckResult, Monitor, Notification
 from .models import Heartbeat
 
@@ -51,10 +52,10 @@ def metrics(request):
         oldest = CheckJob.objects.filter(completed_at=None).aggregate(oldest=Min('created_at'))['oldest']
         values['oldest_pending_seconds'] = (now - oldest).total_seconds() if oldest else 0
         values['pending_jobs'] = CheckJob.objects.filter(completed_at=None).count()
-        values['stale_monitors'] = Monitor.objects.filter(enabled=True, workspace__billing__subscription_status='active', next_check_at__lt=now-timedelta(minutes=2)).count()
+        values['stale_monitors'] = Monitor.objects.filter(monitoring_access_q(), enabled=True, next_check_at__lt=now-timedelta(minutes=2)).count()
         values['notification_pending'] = Notification.objects.filter(delivered_at=None).count()
         values['notification_failed'] = Notification.objects.filter(delivered_at=None, attempts__gt=0).count()
-        values['billing_stale'] = BillingAccount.objects.exclude(stripe_customer_id='').filter(reconciled_at__lt=now-timedelta(hours=1)).count()
+        values['billing_stale'] = BillingAccount.objects.exclude(stripe_customer_id='').filter(reconciled_at__lt=now-timedelta(hours=1)).count() if settings.BILLING_ENABLED else 0
     except Exception:
         values['database_up'] = 0
     body = generate_latest().decode() + ''.join(f'# TYPE uptimekit_{key} gauge\nuptimekit_{key} {value}\n' for key, value in values.items())

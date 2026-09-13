@@ -24,7 +24,7 @@ if [[ -n "${BACKUP_BUCKET:-}" ]]; then
   chmod 644 "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom.tmp"
   mv "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom.tmp" "/var/lib/uptimekit/metrics/offhost-$ENVIRONMENT.prom"
 else
-  echo 'Off-host backup NOT configured; local backup only.' >&2
+  echo 'Backup mode: on-host only (off-host storage is optional).'
 fi
 # Retain local daily/pre-release dumps for seven days; S3 lifecycle is independent.
 find "$STATE/backups" -type f -mtime +7 -delete

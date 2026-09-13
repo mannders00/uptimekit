@@ -16,7 +16,7 @@ flowchart LR
   Dev -->|verified digest promotion| Prod[Production Compose]
   Browser --> CF[Cloudflare TLS] --> Caddy --> Web[Django / Uvicorn]
   Web --> DB[(PostgreSQL)]
-  Stripe[Stripe: awaiting configuration] -->|signed events when enabled| Web
+  Stripe[Stripe: optional, disabled] -->|signed events when enabled| Web
   Beat[Celery Beat] --> Redis[(Redis)] --> Worker[Celery worker]
   Worker --> DB
   Worker --> Proxy[Squid public-destination ACL] --> Internet
@@ -62,10 +62,16 @@ export DJANGO_DEBUG=true POSTGRES_PASSWORD=uptimekit
 .venv/bin/python manage.py test tests
 ```
 
-Register at `/accounts/signup/`. Normal workspaces require Stripe's authenticated
-subscription projection to become active. `seed_canary` creates a separate
-operator-owned synthetic workspace with **no user membership**; it never unlocks
-customer accounts. Email is explicitly disabled until SMTP is configured.
+Register at `/accounts/signup/`, log in, and add monitors for free. With the default
+`BILLING_ENABLED=false`, monitor creation, scheduled checks and reports require no
+Stripe subscription. Tenant isolation still applies. Stripe remains available as
+an opt-in: configure its credentials and set `BILLING_ENABLED=true` to require
+active subscriptions across the UI and background work.
+
+`seed_canary` creates a separate operator-owned synthetic workspace with **no user
+membership**. Email is disabled. On-host PostgreSQL backups run daily and before
+releases, with seven-day local retention and a tested restore workflow. Off-host
+storage and its alert rule are optional and disabled for this deployment.
 
 ## Operator documentation
 

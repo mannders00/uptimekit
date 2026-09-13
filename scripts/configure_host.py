@@ -21,6 +21,7 @@ token = (root / 'metrics-token').read_text().strip()
 for environment, port in [('dev', 8001), ('prod', 8002)]:
     values = {
         'ENVIRONMENT': environment, 'WEB_PORT': port,
+        'BILLING_ENABLED': 'false',
         'DJANGO_ENV': 'production', 'DJANGO_DEBUG': 'false',
         'DJANGO_SECRET_KEY': secrets.token_hex(48),
         'DJANGO_ALLOWED_HOSTS': 'uptimekit.masoftware.net,localhost,127.0.0.1,web,dev-web,prod-web',

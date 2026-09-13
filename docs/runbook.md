@@ -30,7 +30,9 @@ The initial deployment has no previous artifact to restore.
 ## Backups and restoration
 
 `backup` runs daily via GitHub schedule and manually. Local retention is seven
-days. An unset S3 bucket is logged as local-only and raises OffHostBackupMissing.
+days. An unset S3 bucket selects the intended on-host-only mode. Off-host alerting
+is opt-in through `ops/alerts-offhost.yml`; local backup and restore-freshness
+alerts remain active.
 `restore-drill` runs weekly and manually; it performs a new backup and restores it
 into a clean isolated PostgreSQL container with no workers or external task execution.
 It records duration and row counts, then removes the disposable environment.
@@ -71,6 +73,12 @@ still affect both environments. Capture start, alert `startsAt`, recovery and
 workflow URL rather than claiming generic detection/MTTR numbers.
 
 ## Email and billing
+
+Monitoring is free by default (`BILLING_ENABLED=false`). Existing and new users
+can add monitors after login. Stripe endpoints and periodic reconciliation are
+disabled in this mode, even if credentials are present. To introduce billing,
+configure Stripe and set `BILLING_ENABLED=true`; inactive subscriptions will then
+be excluded from monitor creation, dispatch, worker execution and reports.
 
 No email delivery is enabled initially. Notification rows remain queued; enabling
 SMTP may send old pending notifications, so inspect their age before enabling it.

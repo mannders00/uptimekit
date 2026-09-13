@@ -17,13 +17,15 @@ from .services import client, reconcile
 @login_required
 def subscribe(request, workspace_id):
     workspace = workspace_for(request.user, workspace_id)
-    return render(request, 'billing.html', {'workspace': workspace, 'configured': bool(settings.STRIPE_SECRET_KEY and settings.STRIPE_PRICE_ID)})
+    return render(request, 'billing.html', {'workspace': workspace, 'billing_enabled': settings.BILLING_ENABLED, 'configured': bool(settings.STRIPE_SECRET_KEY and settings.STRIPE_PRICE_ID)})
 
 
 @login_required
 @require_POST
 def checkout(request, workspace_id):
     workspace = workspace_for(request.user, workspace_id, owner=True)
+    if not settings.BILLING_ENABLED:
+        return HttpResponse('Monitoring is free; billing is disabled.', status=409)
     if not settings.STRIPE_SECRET_KEY or not settings.STRIPE_PRICE_ID:
         return HttpResponse('Stripe is not configured yet.', status=503)
     with transaction.atomic():
@@ -48,6 +50,8 @@ def checkout(request, workspace_id):
 @require_POST
 def portal(request, workspace_id):
     workspace = workspace_for(request.user, workspace_id, owner=True)
+    if not settings.BILLING_ENABLED:
+        return HttpResponse('Monitoring is free; billing is disabled.', status=409)
     if not workspace.billing.stripe_customer_id:
         return redirect('subscribe', workspace_id=workspace_id)
     session = client().v1.billing_portal.sessions.create(params={'customer': workspace.billing.stripe_customer_id, 'return_url': settings.SITE_URL})
@@ -57,6 +61,8 @@ def portal(request, workspace_id):
 @csrf_exempt
 @require_POST
 def webhook(request):
+    if not settings.BILLING_ENABLED:
+        return HttpResponse(status=404)
     if not settings.STRIPE_WEBHOOK_SECRET:
         return HttpResponse(status=503)
     try:

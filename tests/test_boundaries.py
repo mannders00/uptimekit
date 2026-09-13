@@ -18,6 +18,7 @@ from monitors.services import apply_check_result, check_url
 from monitors.tasks import dispatch_due_checks, run_monitor, delete_old_checks
 
 
+@override_settings(BILLING_ENABLED=True)
 class Boundaries(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='alice', email='alice@example.com', password='long-random-password-123')
@@ -81,6 +82,9 @@ class Boundaries(TestCase):
     def test_dispatcher_filters_and_recovers_publish_failure(self):
         Monitor.objects.create(workspace=self.workspace, name='disabled', url='https://example.com', enabled=False)
         Monitor.objects.create(workspace=self.workspace, name='future', url='https://example.com', next_check_at=timezone.now()+timedelta(days=1))
+        unpaid = Workspace.objects.create(name='Unpaid')
+        BillingAccount.objects.create(workspace=unpaid)
+        Monitor.objects.create(workspace=unpaid, name='unpaid', url='https://example.com')
         with patch('monitors.tasks.run_monitor.delay', side_effect=ConnectionError):
             with self.assertRaises(ConnectionError):
                 dispatch_due_checks()
@@ -191,3 +195,54 @@ class Boundaries(TestCase):
             response = self.client.post('/billing/webhook/', body, content_type='application/json', HTTP_STRIPE_SIGNATURE=f't={timestamp},v1={signature}')
         self.assertEqual(response.status_code, 503)
         self.assertFalse(StripeEvent.objects.filter(event_id='evt_failed', processed_at__isnull=False).exists())
+
+    @override_settings(BILLING_ENABLED=False)
+    def test_free_monitor_creation_dispatch_and_execution_without_subscription(self):
+        self.billing.subscription_status = ''
+        self.billing.save()
+        response = self.client.post(reverse('monitor-create', args=[self.workspace.pk]), {
+            'name': 'Free monitor', 'url': 'https://example.com/',
+            'interval_seconds': 30, 'timeout_seconds': 10, 'enabled': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        monitor = Monitor.objects.get(name='Free monitor')
+        with patch('monitors.tasks.run_monitor.delay') as publish:
+            dispatch_due_checks()
+            self.assertEqual(publish.call_count, 2)
+        job = CheckJob.objects.get(monitor=monitor)
+        with patch('monitors.tasks.check_url', return_value={'ok': True, 'status_code': 200, 'latency_ms': 42}):
+            run_monitor(job.pk)
+        self.assertTrue(monitor.checks.get().ok)
+        self.billing.refresh_from_db()
+        self.assertEqual(self.billing.subscription_status, '')
+        self.assertContains(self.client.get('/'), 'Free monitoring')
+        self.assertEqual(self.client.get(reverse('monitor-detail', args=[self.workspace.pk, monitor.pk])).status_code, 200)
+        other = Workspace.objects.create(name='Private workspace')
+        other_monitor = Monitor.objects.create(workspace=other, name='Private monitor', url='https://example.com/')
+        self.assertEqual(self.client.get(reverse('monitor-detail', args=[other.pk, other_monitor.pk])).status_code, 404)
+
+    @override_settings(BILLING_ENABLED=False)
+    def test_free_reports_and_worker_do_not_require_billing_record(self):
+        import tempfile
+        from reports.tasks import generate_reports
+        from reports.models import ReportExport
+        self.billing.delete()
+        job = CheckJob.objects.create(monitor=self.monitor)
+        with patch('monitors.tasks.check_url', return_value={'ok': True, 'status_code': 200}):
+            run_monitor(job.pk)
+        self.assertTrue(self.monitor.checks.get().ok)
+        with tempfile.TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=directory):
+            generate_reports()
+            self.assertEqual(ReportExport.objects.filter(workspace=self.workspace).count(), 1)
+
+    @override_settings(BILLING_ENABLED=False, STRIPE_SECRET_KEY='sk_test_unused', STRIPE_WEBHOOK_SECRET='whsec_unused', STRIPE_PRICE_ID='price_unused')
+    def test_disabled_billing_never_calls_stripe_even_if_credentials_exist(self):
+        from billing.tasks import reconcile_accounts
+        with patch('billing.views.client') as client, patch('billing.tasks.reconcile') as reconcile:
+            for endpoint in ('checkout', 'portal'):
+                self.assertEqual(self.client.post(reverse(endpoint, args=[self.workspace.pk])).status_code, 409)
+            self.assertEqual(self.client.post('/billing/webhook/', '{}', content_type='application/json').status_code, 404)
+            reconcile_accounts()
+            client.assert_not_called()
+            reconcile.assert_not_called()
+        self.assertContains(self.client.get(reverse('subscribe', args=[self.workspace.pk])), 'Monitoring is free')

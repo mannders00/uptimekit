@@ -26,6 +26,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./alerts-offhost.yml:/etc/prometheus/alerts-offhost.yml:ro
       - /etc/uptimekit/metrics-token:/etc/prometheus/metrics-token:ro
       - prometheus_data:/prometheus
     networks: [ops]

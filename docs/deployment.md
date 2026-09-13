@@ -58,8 +58,11 @@ canary produced through Beat → Redis → worker → PostgreSQL.
 ## Service configuration
 
 Edit `/etc/uptimekit/dev.env` and `prod.env` on the server. Values are ordinary
-environment variables, not committed files. `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_ID` enable Stripe sandbox/live use.
+environment variables, not committed files. Monitoring is free by default:
+`BILLING_ENABLED=false`. To opt into payment requirements, configure
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_ID`, then set
+`BILLING_ENABLED=true` and deploy. This enables the payment gate in views,
+dispatch, workers and reports as well as the Stripe endpoints and reconciliation.
 Point signed Stripe events at `/billing/webhook/`; enable subscription created,
 updated, deleted, and checkout completed. Configure the Stripe Customer Portal.
 
@@ -69,10 +72,15 @@ For SMTP, set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`,
 
 For reports set `REPORT_BUCKET` and scoped AWS credentials. With no report
 bucket, generated files persist in a Docker media volume (host failure risk).
-For backup uploads edit `/etc/uptimekit/backup.env`: `BACKUP_BUCKET`, region and
+On-host PostgreSQL backups are the current operating policy; off-host storage is
+optional. For backup uploads edit `/etc/uptimekit/backup.env`: `BACKUP_BUCKET`, region and
 scoped AWS credentials. Enable S3 versioning, block public access, and configure
 a 30-day retention lifecycle independently of the seven-day local dump retention.
 The backup identity needs PutObject; the recovery identity also needs GetObject.
+When opting into off-host backups, also add `/etc/prometheus/alerts-offhost.yml`
+to `rule_files` in `ops/prometheus.yml` and redeploy observability. Its rule is
+shipped and validated, but is not loaded by default. Local backup freshness and
+restore-drill alerts remain enabled.
 
 ## Private dashboards and dev
 

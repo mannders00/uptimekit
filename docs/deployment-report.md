@@ -4,6 +4,24 @@
 deployment with observed releases and failure/recovery drills. Measurements below
 describe this small dataset and this host; they are not uptime or recovery SLAs.
 
+## Current operating policy
+
+At the operator's request, monitoring is now **free after login**, with
+`BILLING_ENABLED=false` as the default. Stripe integration is retained as an
+explicit opt-in for later. The shared access policy covers monitor creation,
+dispatch, worker execution, reports and stale-monitor metrics, while preserving
+tenant isolation and the actual stored subscription states.
+
+**Backups are on-host for now**: daily and pre-release PostgreSQL dumps, seven-day
+retention, and the verified disposable restore workflow. Off-host S3 and its alert
+rule are optional; the off-host alert is no longer loaded by default. Existing
+backup/restore-freshness alerts remain enabled. The UptimeKit brand links to the
+Monitors dashboard.
+
+The release identifiers, measurements and screenshots below record the original
+infrastructure exercises; screenshots showing the off-host warning predate this
+policy change. The health endpoint always reports the currently running release.
+
 ## Public entry points
 
 - Application: https://uptimekit.masoftware.net/
@@ -17,7 +35,7 @@ Encrypt origin certificate. Registration, login/logout, an authenticated workspa
 dashboard, and the unpaid monitor-creation gate were exercised in a real browser.
 The synthetic browser-test account was disabled after verification.
 
-Current verified application release:
+Original themed application release used for the screenshots:
 
 ```text
 commit: 811d8425fb52465c64efa7eabd1356c068011306
@@ -29,7 +47,7 @@ colors, borders and font stack. Browser verification compared all twelve shared
 color tokens and the computed font family; they matched. Both 1440px desktop and
 390px mobile layouts were checked for horizontal overflow.
 
-![Current site with matching Reticle theme and live diagram](evidence/reticle-matched-theme.png)
+![Themed site before the free-monitoring and on-host-only policy update](evidence/reticle-matched-theme.png)
 
 ## Existing deployment
 
@@ -49,9 +67,9 @@ color tokens and the computed font family; they matched. Both 1440px desktop and
 | Restore verification | Weekly/manual disposable PostgreSQL restore with Django checks and state validation |
 | External health | Scheduled GitHub-hosted HTTPS check, outside the EC2 failure domain |
 
-Customer monitoring requires active Stripe billing. An operator-owned canary
+Customer monitoring is free unless billing is explicitly enabled. An operator-owned canary
 workspace has no customer memberships and checks `https://example.com/`; it proves
-the asynchronous loop without granting free access to user accounts.
+the asynchronous loop independently of user-created monitors.
 
 At one observed point during verification, the host had approximately **2.4 GB
 available memory** and **33 GB available root-disk space**. This is a snapshot,
@@ -163,16 +181,15 @@ installation repeatable. For embedding on `masoftware.net` or `www.masoftware.ne
 Other website origins must be added to the Reticle proxy's `frame-ancestors`
 allowlist. Reticle's Fit control fits the topology to the embedded viewport.
 
-## Remaining prerequisites and explicit limits
+## Optional integrations and operating limits
 
-1. **Stripe:** application integration and failure tests exist, but no Stripe
-   sandbox credentials/Product/Price/Portal configuration were supplied. A real
-   Checkout/Portal/cancellation replay remains unverified. User monitoring remains
-   gated while billing is unconfigured.
-2. **Off-host S3:** no bucket or AWS credential configuration was supplied.
-   Backups currently remain on the EC2 host; `OffHostBackupMissing` is intentionally
-   firing. The restore script supports downloading from S3 when configured, but
-   the recorded runs used local dumps. Host-loss recovery is not yet demonstrated.
+1. **Stripe:** deferred by choice. Its integration and paid-mode tests remain
+   available; enabling it later requires provider configuration and real sandbox
+   Checkout/Portal/cancellation verification. Free monitoring does not need it.
+2. **Off-host S3:** deferred by choice. Backups remain on the EC2 host, and the
+   optional `OffHostBackupMissing` rule is disabled. The restore script supports
+   S3 downloads if configured later; the recorded runs used local dumps. These
+   on-host backups do not cover loss of the entire host.
 3. **Email:** intentionally disabled at the operator's request. Product notification
    rows/retry logic exist, but no email delivery or outbound alert paging is claimed.
 4. **Reports:** currently use a persistent local media volume. S3 is needed for
@@ -185,7 +202,7 @@ allowlist. Reticle's Fit control fits the topology to the embedded viewport.
    documented and separated from monitor/report apps; a separate extracted generic
    starter repository has not been published.
 
-Next operational work is to configure Stripe and scoped S3 access, verify sandbox
-billing and an off-host restore, and add outbound paging if desired. The existing
-runbooks explain the exact paths. Publish subsequent measurements alongside these
-records rather than extrapolating a reliability guarantee from this reference.
+Stripe, off-host storage and outbound paging can be enabled later if desired;
+they are not prerequisites for the current free-monitoring deployment. The
+runbooks document the activation paths. Publish subsequent measurements alongside
+these records rather than extrapolating a reliability guarantee from this reference.

@@ -8,7 +8,7 @@ from .services import reconcile
 
 @shared_task
 def reconcile_accounts():
-    if not settings.STRIPE_SECRET_KEY:
+    if not settings.BILLING_ENABLED or not settings.STRIPE_SECRET_KEY:
         return
     for pk in BillingAccount.objects.exclude(stripe_customer_id='').values_list('pk', flat=True):
         try:

@@ -1,4 +1,5 @@
 from django.db import models
+from .access import subscription_has_access
 
 class BillingAccount(models.Model):
     workspace = models.OneToOneField('core.Workspace', on_delete=models.CASCADE, related_name='billing')
@@ -9,7 +10,7 @@ class BillingAccount(models.Model):
 
     @property
     def has_access(self):
-        return self.subscription_status == 'active'
+        return subscription_has_access(self.subscription_status)
 
 
 class StripeEvent(models.Model):

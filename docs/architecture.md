@@ -17,8 +17,11 @@
   through the authenticated workspace membership. Billing actions require owner.
 - Payment redirects are not authority: signed raw-body webhooks are deduplicated;
   current matching-price subscriptions are reconciled under an account lock.
-  Periodic reconciliation repairs missed events. Only active subscriptions allow
-  customer scheduling; workers check entitlement again before outbound work.
+  When `BILLING_ENABLED=true`, periodic reconciliation repairs missed events and
+  active subscriptions gate both customer scheduling and worker execution. The
+  default free mode grants monitoring/report access to authenticated workspace
+  members without changing any stored Stripe subscription status. A shared policy
+  in `billing/access.py` governs views, queries and worker execution.
 
 ## SSRF
 

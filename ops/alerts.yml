@@ -60,10 +60,6 @@ groups:
         expr: time() - uptimekit_backup_timestamp_seconds > 90000 or absent(uptimekit_backup_timestamp_seconds)
         for: 5m
         labels: {severity: critical}
-      - alert: OffHostBackupMissing
-        expr: time() - uptimekit_offhost_backup_timestamp_seconds > 90000 or absent(uptimekit_offhost_backup_timestamp_seconds)
-        for: 5m
-        labels: {severity: warning}
       - alert: RestoreDrillOverdue
         expr: time() - uptimekit_restore_timestamp_seconds > 604800 or absent(uptimekit_restore_timestamp_seconds)
         for: 5m

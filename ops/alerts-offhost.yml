@@ -1,0 +1,8 @@
+# Optional: add this file to prometheus.yml rule_files when off-host backups are enabled.
+groups:
+  - name: uptimekit-offhost
+    rules:
+      - alert: OffHostBackupMissing
+        expr: time() - uptimekit_offhost_backup_timestamp_seconds > 90000 or absent(uptimekit_offhost_backup_timestamp_seconds)
+        for: 5m
+        labels: {severity: warning}

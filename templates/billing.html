@@ -1,1 +1,17 @@
-{% extends 'base.html' %}{% block content %}<h1>Billing · {{ workspace.name }}</h1><div class="card"><p>Status: <strong>{{ workspace.billing.subscription_status|default:'not subscribed' }}</strong></p>{% if request.GET.processing %}<p>Payment processing. Access updates only after a verified Stripe event; refresh shortly.</p>{% endif %}{% if configured %}<form method="post" action="{% url 'checkout' workspace.id %}">{% csrf_token %}<button>Subscribe with Stripe</button></form><br><form method="post" action="{% url 'portal' workspace.id %}">{% csrf_token %}<button>Manage billing</button></form>{% else %}<p>Stripe sandbox is awaiting operator configuration. Registration is available; paid monitoring is not unlocked.</p>{% endif %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<h1>Billing · {{ workspace.name }}</h1>
+<div class="card">
+  {% if not billing_enabled %}
+    <p>Monitoring is free. No subscription or payment is required.</p>
+    <a href="{% url 'dashboard' %}">Back to Monitors</a>
+  {% else %}
+    <p>Status: <strong>{{ workspace.billing.subscription_status|default:'not subscribed' }}</strong></p>
+    {% if request.GET.processing %}<p>Payment processing. Access updates only after a verified Stripe event; refresh shortly.</p>{% endif %}
+    {% if configured %}
+      <form method="post" action="{% url 'checkout' workspace.id %}">{% csrf_token %}<button>Subscribe with Stripe</button></form><br>
+      <form method="post" action="{% url 'portal' workspace.id %}">{% csrf_token %}<button>Manage billing</button></form>
+    {% else %}<p>Billing is enabled but Stripe still needs operator configuration.</p>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

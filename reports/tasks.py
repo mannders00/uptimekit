@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from core.models import Workspace
+from billing.access import monitoring_access_q, workspace_has_access
 from .models import ReportExport
 
 
@@ -15,10 +16,10 @@ def generate_reports():
     today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
     end = today - timedelta(days=today.weekday())
     start = end - timedelta(days=7)
-    for pk in Workspace.objects.filter(billing__subscription_status='active').values_list('pk', flat=True):
+    for pk in Workspace.objects.filter(monitoring_access_q('billing')).values_list('pk', flat=True):
         with transaction.atomic():
             workspace = Workspace.objects.select_for_update().get(pk=pk)
-            if not workspace.billing.has_access:
+            if not workspace_has_access(workspace):
                 continue
             export, _ = ReportExport.objects.get_or_create(workspace=workspace, period_start=start, defaults={'period_end': end})
             if export.file:

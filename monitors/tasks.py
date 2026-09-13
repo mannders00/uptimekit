@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from core.models import Heartbeat
+from billing.access import monitoring_access_q, workspace_has_access
 from .models import CheckJob, CheckResult, Monitor, Notification
 from .services import apply_check_result, check_url
 
@@ -19,7 +20,7 @@ def dispatch_due_checks():
     with transaction.atomic():
         Heartbeat.objects.update_or_create(name='dispatcher')
         due = Monitor.objects.select_for_update(skip_locked=True).filter(
-            enabled=True, next_check_at__lte=now, workspace__billing__subscription_status='active'
+            monitoring_access_q(), enabled=True, next_check_at__lte=now
         ).order_by('next_check_at')[:200]
         for monitor in due:
             CheckJob.objects.get_or_create(monitor=monitor, completed_at=None)
@@ -39,7 +40,7 @@ def run_monitor(job_id):
         if not job or job.completed_at:
             return
         monitor = Monitor.objects.select_for_update(of=('self',)).select_related('workspace__billing').get(pk=job.monitor_id)
-        if monitor.enabled and monitor.workspace.billing.has_access:
+        if monitor.enabled and workspace_has_access(monitor.workspace):
             result = CheckResult.objects.create(monitor=monitor, job=job, **check_url(monitor.url, monitor.timeout_seconds))
             apply_check_result(result)
             logger.info('monitor_check_complete', extra={'monitor_id': monitor.pk, 'check_id': result.pk, 'ok': result.ok, 'latency_ms': result.latency_ms})
