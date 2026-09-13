@@ -9,7 +9,7 @@ FILE="$STATE/backups/$STAMP.dump"
 compose exec -T db pg_dump -U uptimekit -d uptimekit --format=custom > "$FILE.partial"
 test -s "$FILE.partial"
 mv "$FILE.partial" "$FILE"
-sha256sum "$FILE" > "$FILE.sha256"
+(cd "$STATE/backups" && sha256sum "$STAMP.dump" > "$STAMP.dump.sha256")
 compose exec -T db pg_restore --list < "$FILE" >/dev/null
 printf 'uptimekit_backup_timestamp_seconds{environment="%s"} %s\n' "$ENVIRONMENT" "$(date +%s)" > "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom.tmp"
 chmod 644 "/var/lib/uptimekit/metrics/backup-$ENVIRONMENT.prom.tmp"

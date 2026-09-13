@@ -89,6 +89,7 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'uptimekit'),
         'HOST': os.getenv('POSTGRES_HOST', '127.0.0.1'),
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'OPTIONS': {'connect_timeout': 3},
     }
 }
 
@@ -191,6 +192,7 @@ LOGGING = {
     'formatters': {'json': {'()': 'core.observability.JSONFormatter'}},
     'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'json'}},
     'root': {'handlers': ['console'], 'level': 'INFO'},
+    'loggers': {'httpx': {'level': 'WARNING'}, 'httpcore': {'level': 'WARNING'}},
 }
 
 

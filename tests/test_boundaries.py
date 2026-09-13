@@ -143,3 +143,51 @@ class Boundaries(TestCase):
             client.return_value.v1.subscriptions.list.return_value.auto_paging_iter.return_value = iter([subscription])
             reconcile(self.billing)
         self.assertFalse(self.billing.has_access)
+
+    def test_signup_creates_unpaid_workspace(self):
+        self.client.logout()
+        response = self.client.post('/accounts/signup/', {'username': 'new-user', 'email': 'new@example.com', 'password1': 'a-unique-long-password-xyz-123', 'password2': 'a-unique-long-password-xyz-123'})
+        self.assertEqual(response.status_code, 302)
+        workspace = Workspace.objects.get(memberships__user__username='new-user')
+        self.assertFalse(workspace.billing.has_access)
+        self.assertEqual(workspace.memberships.get().role, 'owner')
+
+    @override_settings(MAILERS={'default': {'BACKEND': 'django.core.mail.backends.locmem.EmailBackend'}})
+    def test_notification_provider_failure_keeps_incident_and_retries(self):
+        from monitors.tasks import deliver_notifications
+        result = CheckResult.objects.create(monitor=self.monitor, ok=False)
+        apply_check_result(result)
+        with patch('monitors.tasks.send_mail', side_effect=OSError('offline')):
+            deliver_notifications()
+        item = Notification.objects.get()
+        self.assertEqual(item.attempts, 1)
+        self.assertIsNone(item.delivered_at)
+        self.assertGreater(item.next_attempt_at, timezone.now())
+        self.assertTrue(Incident.objects.filter(ended_at=None).exists())
+
+    def test_reports_are_idempotent_and_tenant_scoped(self):
+        import tempfile
+        from reports.tasks import generate_reports
+        from reports.models import ReportExport
+        with tempfile.TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=directory):
+            generate_reports()
+            generate_reports()
+            self.assertEqual(ReportExport.objects.count(), 1)
+            export = ReportExport.objects.get()
+            self.assertIn(b'sample_success_percent', export.file.read())
+            other = Workspace.objects.create(name='Other')
+            self.assertEqual(self.client.get(reverse('report-download', args=[other.pk, export.pk])).status_code, 404)
+            response = self.client.get(reverse('report-download', args=[self.workspace.pk, export.pk]))
+            self.assertEqual(response.status_code, 200)
+            response.close()
+
+    @override_settings(STRIPE_WEBHOOK_SECRET='whsec_test')
+    def test_processing_failure_is_not_acknowledged(self):
+        event = {'id': 'evt_failed', 'type': 'customer.subscription.deleted', 'data': {'object': {'customer': 'cus_alice'}}}
+        body = json.dumps(event).encode()
+        timestamp = str(int(time.time()))
+        signature = hmac.new(b'whsec_test', timestamp.encode()+b'.'+body, hashlib.sha256).hexdigest()
+        with patch('billing.views.reconcile', side_effect=OSError('Stripe unavailable')):
+            response = self.client.post('/billing/webhook/', body, content_type='application/json', HTTP_STRIPE_SIGNATURE=f't={timestamp},v1={signature}')
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(StripeEvent.objects.filter(event_id='evt_failed', processed_at__isnull=False).exists())

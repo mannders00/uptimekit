@@ -100,6 +100,13 @@ edges:
   edge-backup: {kind: tcp, label: pg_dump / restore, from: postgres, to: backups}
   edge-promote: {kind: tcp, label: verified image promotion, from: dev, to: web}
 collectors:
+  - id: caddy-ready
+    nodeId: caddy
+    name: TLS reverse proxy to ready origin
+    kind: http
+    url: https://uptimekit.masoftware.net/health/ready
+    status: 2xx
+    timeoutSeconds: 8
   - id: public-health
     nodeId: customer
     name: Public TLS readiness
