@@ -179,7 +179,7 @@ class Boundaries(TestCase):
             self.assertEqual(self.client.get(reverse('report-download', args=[other.pk, export.pk])).status_code, 404)
             response = self.client.get(reverse('report-download', args=[self.workspace.pk, export.pk]))
             self.assertEqual(response.status_code, 200)
-            response.close()
+            self.assertIn(b'sample_success_percent', b''.join(response.streaming_content))
 
     @override_settings(STRIPE_WEBHOOK_SECRET='whsec_test')
     def test_processing_failure_is_not_acknowledged(self):

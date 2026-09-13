@@ -71,4 +71,4 @@ def operations(request):
         available = True
     except (httpx.HTTPError, ValueError):
         pass
-    return render(request, 'operations.html', {'alerts': alerts, 'available': available, 'release': settings.RELEASE_SHA})
+    return render(request, 'operations.html', {'alerts': alerts, 'available': available, 'release': settings.RELEASE_SHA, 'sampled_at': timezone.now()})
